@@ -1,15 +1,21 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
 
-public class UsersService: IUsersService
+public class UsersService : IUsersService
 {
-    private DataBase _context;
-    private TokenGenerator _tokenGenerator;
+    private readonly DataBase _context;
+    private readonly TokenGenerator _tokenGenerator;
+    private readonly PasswordHasher _passwordHasher;
     public UsersService(DataBase context)
     {
         _tokenGenerator = new TokenGenerator();
         _context = context;
-        
+        _passwordHasher = new PasswordHasher();
     }
+
     public async Task<string?> Registration(UserRegistrationModel body)
     {
         var checkEmail = await _context.Users.AllAsync(u => u.Email != body.Email);
@@ -19,10 +25,11 @@ public class UsersService: IUsersService
         }
 
         var token = _tokenGenerator.GenerateToken();
+        var hashedPassword = _passwordHasher.HashPassword(body.Password);
         var user = new User
         {
             Name = body.Name,
-            Password = body.Password,
+            Password = hashedPassword,
             Email = body.Email,
             Token = token
         };
@@ -34,10 +41,11 @@ public class UsersService: IUsersService
 
     public async Task<string?> Authorisation(UserAuthorisationModel body)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == body.Email && u.Password == body.Password);
+        var hashedPassword = _passwordHasher.HashPassword(body.Password);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == body.Email && u.Password == hashedPassword);
         if (user == null)
         {
-            return null;
+            throw new Exception("Wrong email or password");
         }
 
         var token = _tokenGenerator.GenerateToken();

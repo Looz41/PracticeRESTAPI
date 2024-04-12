@@ -16,16 +16,14 @@ namespace Practice2.Controllers
         [HttpPost("[controller]/[action]")]
         public async Task<IActionResult> Authorizate(UserAuthorisationModel model)
         {
-            var result = await _usersService.Authorisation(model);
-
-            if (result == null)
+            try
             {
-                return Ok(new
-                {
-                    error = "Error"
-                });
+                var result = await _usersService.Authorisation(model);
+                return Ok(new { token = result });
+            } catch (Exception ex)
+            {
+                return StatusCode(409, new { error = ex.Message });
             }
-            return Ok(new { token = result });
         }
 
         [HttpPost("[controller]/[action]")]
